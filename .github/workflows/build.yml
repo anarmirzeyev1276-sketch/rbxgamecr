@@ -53,17 +53,17 @@ jobs:
           ./gradlew assembleDebug
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk rbxgamecrV1.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk rbxgamecrV2.apk
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rbxgamecrV1
-          path: rbxgamecrV1.apk
+          name: rbxgamecrV2
+          path: rbxgamecrV2.apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: V1
+          tag_name: V2
           name: rbxgamecrV2
           files: rbxgamecrV2.apk
