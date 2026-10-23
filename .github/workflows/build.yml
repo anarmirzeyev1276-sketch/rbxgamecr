@@ -65,5 +65,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: V1
-          name: rbxgamecrV1
-          files: rbxgamecrV1.apk
+          name: rbxgamecrV1-fixed
+          files: rbxgamecrV1:fixed.apk
