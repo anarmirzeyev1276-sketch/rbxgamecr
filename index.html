@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rbxgamecr</title>
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--tx:#e8eaf0;--mu:#8b92a5;--ac:#4f8cff;--ok:#2ecc71;--er:#ff5c5c}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx);height:100dvh;display:flex;flex-direction:column}
+  header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid #262a34}
+  header h1{font-size:18px;margin:0}
+  button{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 14px;font-size:15px;cursor:pointer}
+  button.sec{background:#2a2f3b}
+  #chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .m{max-width:88%;padding:10px 12px;border-radius:12px;white-space:pre-wrap;word-break:break-word;line-height:1.4}
+  .u{align-self:flex-end;background:var(--ac)}
+  .a{align-self:flex-start;background:var(--card)}
+  .s{align-self:center;color:var(--mu);font-size:13px}
+  .s.ok{color:var(--ok)} .s.er{color:var(--er)}
+  pre{background:#0b0d11;padding:8px;border-radius:8px;overflow-x:auto;font-size:12px;direction:ltr;text-align:left}
+  #bar{display:flex;gap:8px;padding:10px;background:var(--card);border-top:1px solid #262a34}
+  #inp{flex:1;background:#0f1115;color:var(--tx);border:1px solid #2a2f3b;border-radius:8px;padding:10px;font-size:16px}
+  dialog{background:var(--card);color:var(--tx);border:1px solid #2a2f3b;border-radius:14px;width:min(94vw,440px);max-height:92dvh;overflow:auto;padding:18px}
+  dialog::backdrop{background:#000a}
+  label{display:block;margin:10px 0 4px;font-size:13px;color:var(--mu)}
+  dialog input,dialog select{width:100%;background:#0f1115;color:var(--tx);border:1px solid #2a2f3b;border-radius:8px;padding:10px;font-size:15px}
+  .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+  .note{font-size:12px;color:var(--mu);margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎮 rbxgamecr</h1>
+  <button class="sec" id="openS" data-i="settings">⚙ Ayarlar</button>
+</header>
+
+<div id="chat"><div class="m s" id="hint" data-i="hint">Ayarlardan AI və Roblox API-ni yaz, sonra oyunda nə istədiyini yaz.</div></div>
+
+<div id="bar">
+  <input id="inp" data-ph="ph" placeholder="Məs: mapa 10 ədəd qırmızı blok əlavə et" autocomplete="off">
+  <button id="send" data-i="send">Göndər</button>
+</div>
+
+<dialog id="dlg">
+  <h3 style="margin:0 0 6px" data-i="sTitle">Ayarlar</h3>
+
+  <label data-i="lblLang">Dil</label>
+  <select id="lang"></select>
+
+  <label data-i="lblAI">AI seçimi</label>
+  <select id="provider">
+    <option value="claude">Claude</option>
+    <option value="gemini">Gemini</option>
+    <option value="grok">Grok</option>
+  </select>
+
+  <label data-i="lblAIKey">AI API açarı</label>
+  <input id="aiKey" type="password">
+
+  <label data-i="lblModel">Model</label>
+  <input id="model" list="models" placeholder="gemini-2.5-flash">
+  <datalist id="models"></datalist>
+  <button class="sec" id="loadM" style="margin-top:6px;width:100%" data-i="loadM">Modelləri yüklə</button>
+
+  <label data-i="lblRbx">Roblox game API açarı (Open Cloud)</label>
+  <input id="rbxKey" type="password">
+
+  <label>Universe ID</label>
+  <input id="uid" inputmode="numeric">
+
+  <label>Place ID</label>
+  <input id="pid" inputmode="numeric">
+
+  <label data-i="lblProxy">Roblox proxy URL (istəyə bağlı)</label>
+  <input id="proxy" placeholder="https://xxx.workers.dev/?u=">
+
+  <label data-i="lblAProxy">AI proxy URL (istəyə bağlı)</label>
+  <input id="aiProxy" placeholder="https://xxx.workers.dev/?u=">
+
+  <div class="note" data-i="note">Açarlar yalnız bu cihazın yaddaşında saxlanılır.</div>
+  <div class="row">
+    <button class="sec" id="closeS" data-i="close">Bağla</button>
+    <button id="saveS" data-i="save">Yadda saxla</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const FIELDS = ["lang","provider","aiKey","model","rbxKey","uid","pid","proxy","aiProxy"];
+const DEFAULT_MODEL = {claude:"claude-haiku-5-5", gemini:"gemini-2.5-flash", grok:"grok-4"};
+const LANGS = {az:"Azərbaycanca",tr:"Türkçe",en:"English",ru:"Русский",de:"Deutsch",fr:"Français",es:"Español",it:"Italiano",pt:"Português",nl:"Nederlands",pl:"Polski",uk:"Українська",ar:"العربية",fa:"فارسی",hi:"हिन्दी",bn:"বাংলা",ur:"اردو",zh:"中文",ja:"日本語",ko:"한국어",id:"Bahasa Indonesia",ms:"Bahasa Melayu",th:"ไทย",vi:"Tiếng Việt",he:"עברית",el:"Ελληνικά",cs:"Čeština",sv:"Svenska",da:"Dansk",fi:"Suomi",no:"Norsk",ro:"Română",hu:"Magyar",bg:"Български",ka:"ქართული"};
+const RTL = ["ar","fa","ur","he"];
+const UI = {
+  settings:"⚙ Ayarlar", send:"Göndər", ph:"Məs: mapa 10 ədəd qırmızı blok əlavə et",
+  hint:"Ayarlardan AI və Roblox API-ni yaz, sonra oyunda nə istədiyini yaz.",
+  sTitle:"Ayarlar", lblLang:"Dil", lblAI:"AI seçimi", lblAIKey:"AI API açarı", lblModel:"Model",
+  loadM:"Modelləri yüklə", lblRbx:"Roblox game API açarı (Open Cloud)",
+  lblProxy:"Roblox proxy URL (istəyə bağlı)", lblAProxy:"AI proxy URL (istəyə bağlı)",
+  note:"Açarlar yalnız bu cihazın yaddaşında saxlanılır.", close:"Bağla", save:"Yadda saxla",
+  saved:"Ayarlar yadda saxlandı.", connecting:"API qoşulur...", adding:"Roblox oyununa əlavə olunur...",
+  done:"Oyuna əlavə olundu.", netErr:"İnternet/DNS xətası. Wi‑Fi və ya mobil datanı yoxla, VPN/Private DNS söndür və ya Ayarlarda proxy yaz."
+};
+const history = [];
+let T = {...UI};
+
+const cfg = () => { try { return JSON.parse(localStorage.getItem("rbxgamecr")||"{}"); } catch { return {}; } };
+const langName = () => LANGS[cfg().lang||"az"];
+
+/* ---------- şəbəkə ---------- */
+async function net(url, opts, proxy){
+  const full = (proxy||"") + url;
+  let last;
+  for(let i=0;i<2;i++){
+    try { return await fetch(full, opts); }
+    catch(e){
+      last = e;
+      await new Promise(r=>setTimeout(r,400));
+    }
+  }
+  const msg = String(last && last.message || last);
+  if(/resolve host|Failed to fetch|NetworkError|Load failed|network|timeout/i.test(msg)) throw new Error(T.netErr+"\n("+msg+")");
+  throw last;
+}
+
+/* ---------- dil ---------- */
+function applyUI(){
+  document.querySelectorAll("[data-i]").forEach(el=>{ if(T[el.dataset.i]) el.textContent = T[el.dataset.i]; });
+  document.querySelectorAll("[data-ph]").forEach(el=>{ if(T[el.dataset.ph]) el.placeholder = T[el.dataset.ph]; });
+  const l = cfg().lang||"az";
+  document.documentElement.lang = l;
+  document.documentElement.dir = RTL.includes(l) ? "rtl" : "ltr";
+}
+async function setLang(l){
+  if(l==="az"){ T={...UI}; applyUI(); return; }
+  const key = "rbxgamecr_ui_"+l;
+  const cached = localStorage.getItem(key);
+  if(cached){ T={...UI,...JSON.parse(cached)}; applyUI(); return; }
+  T={...UI}; applyUI();
+  try{
+    const raw = await callAI("Translate the JSON values into "+LANGS[l]+". Keep keys, emojis and ‘API’, ‘Roblox’, ‘Universe ID’, ‘Place ID’, ‘URL’ unchanged. Return ONLY valid JSON.",
+      [{role:"user",content:JSON.stringify(UI)}]);
+    const tr = JSON.parse(raw.replace(/```json|```/g,"").trim().replace(/^[^{]*/,"").replace(/[^}]*$/,""));
+    localStorage.setItem(key, JSON.stringify(tr));
+    T={...UI,...tr}; applyUI();
+  }catch(e){ add("⚠ "+e.message,"s er"); }
+}
+
+/* ---------- ayarlar ---------- */
+function fillLangs(){ $("lang").innerHTML = Object.entries(LANGS).map(([k,v])=>`<option value="${k}">${v}</option>`).join(""); }
+function loadS(){ const c=cfg(); FIELDS.forEach(f=>{ if(c[f]!==undefined) $(f).value=c[f]; }); if(!c.lang) $("lang").value="az"; }
+function saveS(){ const c={}; FIELDS.forEach(f=>c[f]=$(f).value.trim()); localStorage.setItem("rbxgamecr",JSON.stringify(c)); }
+
+$("openS").onclick = () => { loadS(); $("dlg").showModal(); };
+$("closeS").onclick = () => $("dlg").close();
+$("saveS").onclick = async () => { saveS(); $("dlg").close(); await setLang(cfg().lang||"az"); add(T.saved,"s ok"); };
+
+$("loadM").onclick = async () => {
+  saveS(); const c = cfg(); const st = add("...","s");
+  try{
+    let url, headers={}, pick;
+    if(c.provider==="gemini"){ url="https://generativelanguage.googleapis.com/v1beta/models?pageSize=200"; headers={"x-goog-api-key":c.aiKey}; pick=j=>j.models.filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")).map(m=>m.name.replace("models/","")); }
+    else if(c.provider==="claude"){ url="https://api.anthropic.com/v1/models"; headers={"x-api-key":c.aiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}; pick=j=>j.data.map(m=>m.id); }
+    else { url="https://api.x.ai/v1/models"; headers={authorization:"Bearer "+c.aiKey}; pick=j=>j.data.map(m=>m.id); }
+    const r = await net(url,{headers},c.aiProxy); const j = await r.json();
+    if(!r.ok) throw new Error(j.error?.message||r.status);
+    $("models").innerHTML = pick(j).map(m=>`<option value="${m}">`).join("");
+    st.textContent="✅ "+pick(j).length; st.className="m s ok";
+  }catch(e){ st.textContent="❌ "+e.message; st.className="m s er"; }
+};
+
+function tick(el,label){const t0=Date.now();const id=setInterval(()=>{el.textContent=label+" "+Math.floor((Date.now()-t0)/1000)+"s";},250);return ()=>clearInterval(id);}
+
+function add(text, cls){
+  const d = document.createElement("div");
+  d.className = "m " + cls; d.textContent = text;
+  $("chat").appendChild(d); $("chat").scrollTop = $("chat").scrollHeight;
+  return d;
+}
+
+/* ---------- AI ---------- */
+const SYSTEM = () => `Sən Roblox oyun yaradıcısısan. İstifadəçi oyunda nə istəyirsə, onu Roblox Luau skripti ilə et.
+Yalnız bu JSON formatında cavab ver, başqa heç nə yazma, markdown olmasın:
+{"reply":"istifadəçiyə qısa izah","luau":"icra olunacaq tam Luau kodu"}
+"reply" sahəsini bu dildə yaz: ${langName()}.
+Kodu qısa və sadə yaz, izahı 1-2 cümlə et.
+Luau kodu Workspace/ServerScriptService/StarterGui kimi xidmətlərdə obyektlər yaratmalı, adlandırmalı və Parent təyin etməlidir.
+Əgər oyunda dəyişiklik lazım deyilsə, luau sahəsini boş string qoy.`;
+
+async function callAI(system, msgs){
+  const c = cfg(), model = c.model || DEFAULT_MODEL[c.provider||"claude"], p = c.aiProxy;
+  if(!c.aiKey) throw new Error("AI API key?");
+  if(c.provider==="gemini"){
+    const contents = msgs.map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]}));
+    const gen = {responseMimeType:"application/json"};
+    if(/2\.5.*flash/.test(model)) gen.thinkingConfig = {thinkingBudget:0};
+    const r = await net(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{
+      method:"POST",headers:{"content-type":"application/json","x-goog-api-key":c.aiKey},
+      body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents,generationConfig:gen})},p);
+    const j = await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
+    return j.candidates[0].content.parts.map(x=>x.text||"").join("");
+  }
+  if(c.provider==="grok"){
+    const r = await net("https://api.x.ai/v1/chat/completions",{method:"POST",headers:{
+      "content-type":"application/json","authorization":"Bearer "+c.aiKey},
+      body:JSON.stringify({model,messages:[{role:"system",content:system},...msgs]})},p);
+    const j = await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
+    return j.choices[0].message.content;
+  }
+  const r = await net("https://api.anthropic.com/v1/messages",{method:"POST",headers:{
+    "content-type":"application/json","x-api-key":c.aiKey,"anthropic-version":"2023-06-01",
+    "anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model,max_tokens:2000,system,messages:msgs})},p);
+  const j = await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
+  return j.content.map(x=>x.text||"").join("");
+}
+
+function parseAI(raw){
+  const clean = raw.replace(/```json|```/g,"").trim();
+  const s = clean.indexOf("{"), e = clean.lastIndexOf("}");
+  try { return JSON.parse(clean.slice(s,e+1)); } catch { return {reply:raw, luau:""}; }
+}
+
+/* ---------- Roblox ---------- */
+async function rbx(path, opts={}){
+  const c = cfg();
+  const r = await net("https://apis.roblox.com"+path,{...opts,headers:{"x-api-key":c.rbxKey,"content-type":"application/json"}},c.proxy);
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.message||j.error||("Roblox API "+r.status));
+  return j;
+}
+async function runInGame(code){
+  const c = cfg();
+  if(!c.rbxKey||!c.uid||!c.pid) throw new Error("Roblox API key / Universe ID / Place ID?");
+  const base = `/cloud/v2/universes/${c.uid}/places/${c.pid}/luau-execution-session-tasks`;
+  const task = await rbx(base,{method:"POST",body:JSON.stringify({script:code})});
+  for(let i=0;i<80;i++){
+    await new Promise(r=>setTimeout(r,i<5?500:1000));
+    const t = await rbx("/cloud/v2/"+task.path);
+    if(t.state==="COMPLETE") return t.output?.results?.join("\n")||"OK";
+    if(t.state==="FAILED"||t.state==="CANCELLED") throw new Error(t.error?.message||t.state);
+  }
+  throw new Error("Timeout");
+}
+
+/* ---------- chat ---------- */
+async function send(){
+  const text = $("inp").value.trim(); if(!text) return;
+  $("inp").value = ""; add(text,"u");
+  const st = add(T.connecting,"s"); const stop = tick(st,T.connecting);
+  try{
+    const raw = await callAI(SYSTEM(), history.slice(-6).concat([{role:"user",content:text}]));
+    stop();
+    history.push({role:"user",content:text},{role:"assistant",content:raw});
+    const {reply,luau} = parseAI(raw);
+    st.remove(); const box = add(reply||"…","a");
+    if(luau){
+      const pre = document.createElement("pre"); pre.textContent = luau; box.appendChild(pre);
+      const st2 = add(T.adding,"s"); const stop2 = tick(st2,T.adding);
+      try{ const out = await runInGame(luau); stop2(); st2.textContent="✅ "+T.done+" "+out; st2.className="m s ok"; }
+      catch(e){ stop2(); st2.textContent="❌ Roblox: "+e.message; st2.className="m s er"; }
+    }
+  }catch(e){ stop(); st.textContent="❌ "+e.message; st.className="m s er"; }
+  $("chat").scrollTop = $("chat").scrollHeight;
+}
+$("send").onclick = send;
+$("inp").addEventListener("keydown",e=>{ if(e.key==="Enter") send(); });
+
+fillLangs(); loadS(); setLang(cfg().lang||"az");
+</script>
+</body>
+</html>
