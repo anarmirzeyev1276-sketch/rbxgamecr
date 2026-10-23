@@ -1,0 +1,70 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prepare Capacitor project
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId": "com.rbxgamecr.app",
+            "appName": "rbxgamecr",
+            "webDir": "www",
+            "plugins": { "CapacitorHttp": { "enabled": true } }
+          }
+          JSON
+          npm init -y
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npx cap add android
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'permission.INTERNET' $M || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.INTERNET" />\n</manifest>#' $M
+          grep -q 'ACCESS_NETWORK_STATE' $M || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n</manifest>#' $M
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk rbxgamecrV1.apk
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbxgamecrV2-fix
+          path: rbxgamecrV2-fix.apk
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: V2-fixed
+          name: rbxgamecrV2
+          files: rbxgamecrV2-fixed.apk
+          
