@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rbxgamecr</title>
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--tx:#e8eaf0;--mu:#8b92a5;--ac:#4f8cff;--ok:#2ecc71;--er:#ff5c5c}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx);height:100dvh;display:flex;flex-direction:column}
+  header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid #262a34}
+  header h1{font-size:18px;margin:0}
+  button{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:10px 14px;font-size:15px;cursor:pointer}
+  button.sec{background:#2a2f3b}
+  #chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .m{max-width:88%;padding:10px 12px;border-radius:12px;white-space:pre-wrap;word-break:break-word;line-height:1.4}
+  .u{align-self:flex-end;background:var(--ac)}
+  .a{align-self:flex-start;background:var(--card)}
+  .s{align-self:center;color:var(--mu);font-size:13px}
+  .s.ok{color:var(--ok)} .s.er{color:var(--er)}
+  pre{background:#0b0d11;padding:8px;border-radius:8px;overflow-x:auto;font-size:12px;direction:ltr;text-align:left}
+  #bar{display:flex;gap:8px;padding:10px;background:var(--card);border-top:1px solid #262a34}
+  #inp{flex:1;background:#0f1115;color:var(--tx);border:1px solid #2a2f3b;border-radius:8px;padding:10px;font-size:16px}
+  dialog{background:var(--card);color:var(--tx);border:1px solid #2a2f3b;border-radius:14px;width:min(94vw,440px);max-height:92dvh;overflow:auto;padding:18px}
+  dialog::backdrop{background:#000a}
+  label{display:block;margin:10px 0 4px;font-size:13px;color:var(--mu)}
+  dialog input,dialog select{width:100%;background:#0f1115;color:var(--tx);border:1px solid #2a2f3b;border-radius:8px;padding:10px;font-size:15px}
+  .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+  .note{font-size:12px;color:var(--mu);margin-top:10px}
+  #prev{display:none;gap:10px;padding:10px 12px 4px;background:var(--card);overflow-x:auto}
+  .th{position:relative;flex:none}
+  .th img{height:56px;border-radius:8px;display:block}
+  .th button{position:absolute;top:-6px;right:-6px;padding:0;width:20px;height:20px;border-radius:50%;font-size:11px;background:#ff5c5c}
+  #attach{padding:10px 12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎮 rbxgamecr</h1>
+  <button class="sec" id="openS" data-i="settings">⚙ Ayarlar</button>
+</header>
+
+<div id="chat"><div class="m s" id="hint" data-i="hint">Ayarlardan AI və Roblox API-ni yaz, sonra oyunda nə istədiyini yaz.</div></div>
+
+<div id="prev"></div>
+<div id="bar">
+  <button class="sec" id="attach">📎</button>
+  <input id="inp" data-ph="ph" placeholder="Məs: mapa 10 ədəd qırmızı blok əlavə et" autocomplete="off">
+  <button id="send" data-i="send">Göndər</button>
+</div>
+
+<dialog id="dlg">
+  <h3 style="margin:0 0 6px" data-i="sTitle">Ayarlar</h3>
+
+  <label data-i="lblLang">Dil</label>
+  <select id="lang"></select>
+
+  <label data-i="lblAI">AI seçimi</label>
+  <select id="provider">
+    <option value="claude">Claude</option>
+    <option value="gemini">Gemini</option>
+    <option value="grok">Grok</option>
+  </select>
+
+  <label data-i="lblAIKey">AI API açarı</label>
+  <input id="aiKey" type="password">
+
+  <label data-i="lblModel">Model</label>
+  <input id="model" list="models" placeholder="gemini-2.5-flash">
+  <datalist id="models"></datalist>
+  <button class="sec" id="loadM" style="margin-top:6px;width:100%" data-i="loadM">Modelləri yüklə</button>
+
+  <label data-i="lblRbx">Roblox game API açarı (Open Cloud)</label>
+  <input id="rbxKey" type="password">
+
+  <label>Universe ID</label>
+  <input id="uid" inputmode="numeric">
+
+  <label>Place ID</label>
+  <input id="pid" inputmode="numeric">
+
+  <label data-i="lblSave">Kod işlədikdən sonra oyunu yadda saxla (SavePlaceAsync)</label>
+  <select id="autoSave"><option value="on">ON</option><option value="off">OFF</option></select>
+
+  <label data-i="lblProxy">Roblox proxy URL (istəyə bağlı)</label>
+  <input id="proxy" placeholder="https://xxx.workers.dev/?u=">
+
+  <label data-i="lblAProxy">AI proxy URL (istəyə bağlı)</label>
+  <input id="aiProxy" placeholder="https://xxx.workers.dev/?u=">
+
+  <div class="note" data-i="note">Açarlar yalnız bu cihazın yaddaşında saxlanılır.</div>
+  <div class="row">
+    <button class="sec" id="closeS" data-i="close">Bağla</button>
+    <button id="saveS" data-i="save">Yadda saxla</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const FIELDS = ["autoSave","lang","provider","aiKey","model","rbxKey","uid","pid","proxy","aiProxy"];
+const DEFAULT_MODEL = {claude:"claude-haiku-5-5", gemini:"gemini-2.5-flash", grok:"grok-4"};
+const LANGS = {az:"Azərbaycanca",tr:"Türkçe",en:"English",ru:"Русский",de:"Deutsch",fr:"Français",es:"Español",it:"Italiano",pt:"Português",nl:"Nederlands",pl:"Polski",uk:"Українська",ar:"العربية",fa:"فارسی",hi:"हिन्दी",bn:"বাংলা",ur:"اردو",zh:"中文",ja:"日本語",ko:"한국어",id:"Bahasa Indonesia",ms:"Bahasa Melayu",th:"ไทย",vi:"Tiếng Việt",he:"עברית",el:"Ελληνικά",cs:"Čeština",sv:"Svenska",da:"Dansk",fi:"Suomi",no:"Norsk",ro:"Română",hu:"Magyar",bg:"Български",ka:"ქართული"};
+const RTL = ["ar","fa","ur","he"];
+const UI = {
+  settings:"⚙ Ayarlar", send:"Göndər", ph:"Məs: mapa 10 ədəd qırmızı blok əlavə et",
+  hint:"Ayarlardan AI və Roblox API-ni yaz, sonra oyunda nə istədiyini yaz.",
+  sTitle:"Ayarlar", lblLang:"Dil", lblAI:"AI seçimi", lblAIKey:"AI API açarı", lblModel:"Model",
+  loadM:"Modelləri yüklə", lblRbx:"Roblox game API açarı (Open Cloud)",
+  lblSave:"Kod işlədikdən sonra oyunu yadda saxla (SavePlaceAsync)",
+  lblProxy:"Roblox proxy URL (istəyə bağlı)", lblAProxy:"AI proxy URL (istəyə bağlı)",
+  note:"Açarlar yalnız bu cihazın yaddaşında saxlanılır.", close:"Bağla", save:"Yadda saxla",
+  saved:"Ayarlar yadda saxlandı.", connecting:"API qoşulur...", adding:"Roblox oyununa əlavə olunur...",
+  done:"Oyuna əlavə olundu.", ask:"Kodu oyuna gətirim?", bring:"Kodu gətir", skip:"Kodu gətirmə", cancelled:"Kod oyuna gətirilmədi.", execTimeout:"5 dəqiqə ərzində kod oyuna gətirilmədi.", timeoutErr:"Cavab vaxtında gəlmədi. İnterneti, VPN/Private DNS-i, API açarını və model adını yoxla (Modelləri yüklə).", accepted:"İstəyiniz qəbul olundu, kod hazırlanır...", permAsk:"Foto və videolara giriş icazəsi lazımdır. İcazə verirsiniz?", permAllow:"İcazə ver", permDeny:"İcazə vermə", permDenied:"Foto/video icazəsi verilmədi.", procMedia:"Foto/video hazırlanır...", mediaDefault:"Əlavə etdiyim foto/videoya uyğun oyunda nəsə et.", coding:"Kod hazırlanır...", stopBtn:"Dayandır", stopped:"Dayandırıldı.", netErr:"İnternet/DNS xətası. Wi‑Fi və ya mobil datanı yoxla, VPN/Private DNS söndür və ya Ayarlarda proxy yaz."
+};
+const history = [];
+let T = {...UI};
+
+const raw0 = () => { try { return JSON.parse(localStorage.getItem("rbxgamecr")||"{}"); } catch { return {}; } };
+const cfg = () => {
+  const r = raw0(), pv = r.provider||"claude";
+  const pp = r.P ? (r.P[pv]||{}) : {aiKey:r.aiKey, model:r.model};
+  return {...r, provider:pv, aiKey:pp.aiKey||"", model:pp.model||""};
+};
+let P = {}, curProv = "claude";
+const GEN = FIELDS.filter(f=>f!=="aiKey"&&f!=="model");
+const langName = () => LANGS[cfg().lang||"az"];
+
+/* ---------- şəbəkə ---------- */
+async function net(url, opts, proxy, ms=45000){
+  const full = (proxy||"") + url;
+  let last;
+  for(let i=0;i<2;i++){
+    try {
+      const ctl = new AbortController(); let tm;
+      const timer = new Promise((_,rej)=>{ tm=setTimeout(()=>{ ctl.abort(); rej(new Error("TIMEOUT")); }, ms); });
+      try { return await Promise.race([fetch(full,{...opts,signal:ctl.signal}), timer]); }
+      finally { clearTimeout(tm); }
+    }
+    catch(e){
+      if(e.message==="TIMEOUT") throw new Error(T.timeoutErr);
+      last = e;
+      await new Promise(r=>setTimeout(r,400));
+    }
+  }
+  const msg = String(last && last.message || last);
+  if(/resolve host|Failed to fetch|NetworkError|Load failed|network|timeout/i.test(msg)) throw new Error(T.netErr+"\n("+msg+")");
+  throw last;
+}
+
+/* ---------- dil ---------- */
+function applyUI(){
+  document.querySelectorAll("[data-i]").forEach(el=>{ if(T[el.dataset.i]) el.textContent = T[el.dataset.i]; });
+  document.querySelectorAll("[data-ph]").forEach(el=>{ if(T[el.dataset.ph]) el.placeholder = T[el.dataset.ph]; });
+  const l = cfg().lang||"az";
+  document.documentElement.lang = l;
+  document.documentElement.dir = RTL.includes(l) ? "rtl" : "ltr";
+}
+async function setLang(l){
+  if(l==="az"){ T={...UI}; applyUI(); return; }
+  const key = "rbxgamecr_ui4_"+l;
+  const cached = localStorage.getItem(key);
+  if(cached){ T={...UI,...JSON.parse(cached)}; applyUI(); return; }
+  T={...UI}; applyUI();
+  try{
+    const raw = await callAI("Translate the JSON values into "+LANGS[l]+". Keep keys, emojis and ‘API’, ‘Roblox’, ‘Universe ID’, ‘Place ID’, ‘URL’ unchanged. Return ONLY valid JSON.",
+      [{role:"user",content:JSON.stringify(UI)}],{fast:true,maxTokens:3000});
+    const tr = JSON.parse(raw.replace(/```json|```/g,"").trim().replace(/^[^{]*/,"").replace(/[^}]*$/,""));
+    localStorage.setItem(key, JSON.stringify(tr));
+    T={...UI,...tr}; applyUI();
+  }catch(e){ add("⚠ "+e.message,"s er"); }
+}
+
+/* ---------- ayarlar ---------- */
+function fillLangs(){ $("lang").innerHTML = Object.entries(LANGS).map(([k,v])=>`<option value="${k}">${v}</option>`).join(""); }
+function fillProv(){ const pp = P[curProv]||{}; $("aiKey").value = pp.aiKey||""; $("model").value = pp.model||""; $("model").placeholder = DEFAULT_MODEL[curProv]; $("models").innerHTML = ""; }
+function loadS(){
+  const r = raw0(); GEN.forEach(f=>{ if(r[f]!==undefined) $(f).value=r[f]; }); if(!r.lang) $("lang").value="az";
+  curProv = $("provider").value;
+  P = r.P ? {...r.P} : ((r.aiKey||r.model) ? {[r.provider||"claude"]:{aiKey:r.aiKey||"",model:r.model||""}} : {});
+  fillProv();
+}
+$("provider").onchange = () => { P[curProv] = {aiKey:$("aiKey").value.trim(), model:$("model").value.trim()}; curProv = $("provider").value; fillProv(); };
+function saveS(){
+  P[curProv] = {aiKey:$("aiKey").value.trim(), model:$("model").value.trim()};
+  const c = {}; GEN.forEach(f=>c[f]=$(f).value.trim()); c.P = P;
+  localStorage.setItem("rbxgamecr",JSON.stringify(c));
+}
+
+$("openS").onclick = () => { loadS(); $("dlg").showModal(); };
+$("closeS").onclick = () => $("dlg").close();
+$("saveS").onclick = async () => { saveS(); $("dlg").close(); await setLang(cfg().lang||"az"); add(T.saved,"s ok"); };
+
+$("loadM").onclick = async () => {
+  saveS(); const c = cfg(); const st = add("...","s");
+  try{
+    let url, headers={}, pick;
+    if(c.provider==="gemini"){ url="https://generativelanguage.googleapis.com/v1beta/models?pageSize=200"; headers={"x-goog-api-key":c.aiKey}; pick=j=>j.models.filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")).map(m=>m.name.replace("models/","")); }
+    else if(c.provider==="claude"){ url="https://api.anthropic.com/v1/models"; headers={"x-api-key":c.aiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}; pick=j=>j.data.map(m=>m.id); }
+    else { url="https://api.x.ai/v1/models"; headers={authorization:"Bearer "+c.aiKey}; pick=j=>j.data.map(m=>m.id); }
+    const r = await net(url,{headers},c.aiProxy); const j = await r.json();
+    if(!r.ok) throw new Error(j.error?.message||r.status);
+    $("models").innerHTML = pick(j).map(m=>`<option value="${m}">`).join("");
+    st.textContent="✅ "+pick(j).length; st.className="m s ok";
+  }catch(e){ st.textContent="❌ "+e.message; st.className="m s er"; }
+};
+
+function tick(el,label){const t0=Date.now();const id=setInterval(()=>{el.textContent=label+" "+Math.floor((Date.now()-t0)/1000)+"s";},250);return ()=>clearInterval(id);}
+
+function add(text, cls){
+  const d = document.createElement("div");
+  d.className = "m " + cls; d.textContent = text;
+  $("chat").appendChild(d); $("chat").scrollTop = $("chat").scrollHeight;
+  return d;
+}
+
+/* ---------- AI ---------- */
+const FAST_SYSTEM = () => `Sən Roblox oyun yaradıcısısan. İstifadəçinin istəyinə 1-2 cümlə ilə qısa cavab ver: nə edəcəyini de. Kod YAZMA.
+Yalnız bu JSON formatında cavab ver, markdown olmasın: {"reply":"qısa cavab","needCode":true}
+needCode: istəyi yerinə yetirmək üçün oyunda dəyişiklik/kod lazımdırsa true, sadə söhbətdirsə false.
+"reply" sahəsini bu dildə yaz: ${langName()}.
+İstifadəçi foto və ya video kadrları göndərə bilər; onlara baxıb nəzərə al.`;
+
+const CODE_SYSTEM = () => `Sən Roblox Luau mütəxəssisisən. İstifadəçinin istədiyini Roblox Luau skripti ilə et.
+Yalnız bu JSON formatında cavab ver, markdown olmasın: {"luau":"icra olunacaq tam Luau kodu"}
+Kod Workspace/ServerScriptService/StarterGui kimi xidmətlərdə obyektlər yaratmalı, adlandırmalı və Parent təyin etməlidir.
+Kodu işlək və səliqəli yaz.
+İstifadəçi foto və ya video kadrları göndərə bilər; onlara baxıb nəzərə al.`;
+
+async function callAI(system, msgs, o={}){
+  const {ms=45000, fast=false, maxTokens=2000, json=true} = o;
+  const c = cfg(), model = c.model || DEFAULT_MODEL[c.provider||"claude"], p = c.aiProxy;
+  if(!c.aiKey) throw new Error("AI API key?");
+  if(c.provider==="gemini"){
+    const contents = msgs.map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content},...(m.images||[]).map(i=>({inlineData:{mimeType:i.mime,data:i.data}}))]}));
+    const gen = {};
+    if(json) gen.responseMimeType = "application/json";
+    if(fast){ gen.maxOutputTokens = maxTokens; if(/2\.5.*flash/.test(model)) gen.thinkingConfig = {thinkingBudget:0}; }
+    const r = await net(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{
+      method:"POST",headers:{"content-type":"application/json","x-goog-api-key":c.aiKey},
+      body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents,generationConfig:gen})},p,ms);
+    const j = await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
+    return j.candidates[0].content.parts.map(x=>x.text||"").join("");
+  }
+  if(c.provider==="grok"){
+    const r = await net("https://api.x.ai/v1/chat/completions",{method:"POST",headers:{
+      "content-type":"application/json","authorization":"Bearer "+c.aiKey},
+      body:JSON.stringify({model,messages:[{role:"system",content:system},...msgs.map(m=>m.images&&m.images.length?{role:m.role,content:[{type:"text",text:m.content},...m.images.map(i=>({type:"image_url",image_url:{url:"data:"+i.mime+";base64,"+i.data}}))]}:{role:m.role,content:m.content})]})},p,ms);
+    const j = await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
+    return j.choices[0].message.content;
+  }
+  const r = await net("https://api.anthropic.com/v1/messages",{method:"POST",headers:{
+    "content-type":"application/json","x-api-key":c.aiKey,"anthropic-version":"2023-06-01",
+    "anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model,max_tokens:maxTokens,system,messages:msgs.map(m=>m.images&&m.images.length?{role:m.role,content:[...m.images.map(i=>({type:"image",source:{type:"base64",media_type:i.mime,data:i.data}})),{type:"text",text:m.content}]}:{role:m.role,content:m.content})})},p,ms);
+  const j = await r.json(); if(!r.ok) throw new Error(j.error?.message||r.status);
+  return j.content.map(x=>x.text||"").join("");
+}
+
+const strip = t => t.replace(/```json|```lua|```luau|```/g,"").trim();
+function parseFast(raw){
+  const clean = strip(raw), s = clean.indexOf("{"), e = clean.lastIndexOf("}");
+  try { const j = JSON.parse(clean.slice(s,e+1)); return {reply:j.reply||"", need:j.needCode!==false}; }
+  catch { return {reply:clean, need:true}; }
+}
+function parseCode(raw){
+  const clean = strip(raw), s = clean.indexOf("{"), e = clean.lastIndexOf("}");
+  try { const j = JSON.parse(clean.slice(s,e+1)); if(typeof j.luau==="string") return j.luau; } catch {}
+  return clean;
+}
+
+/* ---------- Roblox ---------- */
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+async function rbx(path, opts={}){
+  const c = cfg();
+  const r = await net("https://apis.roblox.com"+path,{...opts,headers:{"x-api-key":c.rbxKey,"content-type":"application/json"}},c.proxy);
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.message||j.error||("Roblox API "+r.status));
+  return j;
+}
+// limit yoxdur: iş bitənə və ya istifadəçi "Dayandır" basana qədər gözləyir
+async function runInGame(code, ctl){
+  const c = cfg();
+  if(!c.rbxKey||!c.uid||!c.pid) throw new Error("Roblox API key / Universe ID / Place ID?");
+  const base = `/cloud/v2/universes/${c.uid}/places/${c.pid}/luau-execution-session-tasks`;
+  const full = c.autoSave==="off" ? code : code + "\n\ngame:GetService(\"AssetService\"):SavePlaceAsync()";
+  const task = await rbx(base,{method:"POST",body:JSON.stringify({script:full})});
+  let fails = 0;
+  for(let i=0; !ctl.stop; i++){
+    await sleep(i<5?500:1000);
+    let t;
+    try { t = await rbx("/cloud/v2/"+task.path); fails = 0; }
+    catch(e){ if(++fails>=5) throw e; continue; }
+    if(t.state==="COMPLETE") return t.output?.results?.join("\n")||"OK";
+    if(t.state==="FAILED"||t.state==="CANCELLED") throw new Error(t.error?.message||t.state);
+  }
+  throw new Error(T.stopped);
+}
+
+function askBring(luau){
+  const q = add(T.ask,"a");
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;gap:8px;margin-top:10px";
+  const yes = document.createElement("button"); yes.textContent = T.bring; yes.style.cssText = "background:#2ecc71;flex:1";
+  const no = document.createElement("button"); no.textContent = T.skip; no.style.cssText = "background:#ff5c5c;flex:1";
+  row.append(yes,no); q.appendChild(row);
+  no.onclick = () => { row.remove(); add("✖ "+T.cancelled,"s er"); $("chat").scrollTop = $("chat").scrollHeight; };
+  yes.onclick = async () => {
+    row.remove();
+    const st2 = add("","s"), span = document.createElement("span"), ctl = {stop:false};
+    const stopBtn = document.createElement("button");
+    stopBtn.textContent = T.stopBtn; stopBtn.className = "sec"; stopBtn.style.cssText = "margin-inline-start:10px;padding:4px 10px;font-size:12px";
+    stopBtn.onclick = () => { ctl.stop = true; };
+    st2.append(span, stopBtn);
+    const stopT = tick(span, T.adding);
+    try{ const out = await runInGame(luau, ctl); stopT(); st2.textContent="✅ "+T.done+" "+out; st2.className="m s ok"; }
+    catch(e){ stopT(); st2.textContent="❌ Roblox: "+e.message; st2.className="m s er"; }
+    $("chat").scrollTop = $("chat").scrollHeight;
+  };
+  $("chat").scrollTop = $("chat").scrollHeight;
+}
+
+/* ---------- foto / video ---------- */
+const atts = [];
+const fileEl = document.createElement("input");
+fileEl.type = "file"; fileEl.accept = "image/*,video/*"; fileEl.multiple = true; fileEl.style.display = "none";
+document.body.appendChild(fileEl);
+
+function ask2(msg, yesT, noT){
+  return new Promise(res=>{
+    const q = add(msg,"a"), row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:8px;margin-top:10px";
+    const y = document.createElement("button"); y.textContent = yesT; y.style.cssText = "background:#2ecc71;flex:1";
+    const n = document.createElement("button"); n.textContent = noT; n.style.cssText = "background:#ff5c5c;flex:1";
+    row.append(y,n); q.appendChild(row); $("chat").scrollTop = $("chat").scrollHeight;
+    y.onclick = () => { row.remove(); res(true); };
+    n.onclick = () => { row.remove(); res(false); };
+  });
+}
+async function mediaPermission(){
+  const cp = window.Capacitor && window.Capacitor.Plugins;
+  try{ if(cp && cp.Camera && cp.Camera.requestPermissions) await cp.Camera.requestPermissions({permissions:["photos"]}); }catch(e){}
+}
+$("attach").onclick = async () => {
+  if(localStorage.getItem("rbxgamecr_media")!=="1"){
+    const ok = await ask2(T.permAsk, T.permAllow, T.permDeny);
+    if(!ok){ add("✖ "+T.permDenied,"s er"); return; }
+    localStorage.setItem("rbxgamecr_media","1");
+  }
+  await mediaPermission();
+  fileEl.click();
+};
+
+const loadImg = src => new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error("image")); i.src=src; });
+function shrink(src, w, h, max, q){
+  const k = Math.min(1, max/Math.max(w,h)), c = document.createElement("canvas");
+  c.width = Math.max(1,Math.round(w*k)); c.height = Math.max(1,Math.round(h*k));
+  c.getContext("2d").drawImage(src,0,0,c.width,c.height);
+  return c.toDataURL("image/jpeg",q);
+}
+async function processImage(f){
+  const url = URL.createObjectURL(f);
+  try{
+    const im = await loadImg(url), w = im.naturalWidth, h = im.naturalHeight;
+    return {thumb:shrink(im,w,h,160,0.6), images:[{mime:"image/jpeg",data:shrink(im,w,h,1280,0.8).split(",")[1]}]};
+  } finally { URL.revokeObjectURL(url); }
+}
+// video: bərabər məsafədə 4 kadr çıxarılır (bütün AI provayderlərində işləsin deyə)
+async function processVideo(f){
+  const url = URL.createObjectURL(f);
+  const v = document.createElement("video"); v.muted = true; v.preload = "auto"; v.playsInline = true; v.src = url;
+  try{
+    await Promise.race([new Promise((res,rej)=>{ v.onloadedmetadata = res; v.onerror = () => rej(new Error("video")); }), sleep(15000).then(()=>{ throw new Error("video"); })]);
+    const dur = v.duration || 1, n = 4, imgs = []; let thumb = "";
+    for(let k=0;k<n;k++){
+      v.currentTime = Math.max(0, Math.min(dur-0.05, dur*(k+0.5)/n));
+      await Promise.race([new Promise(res=>{ v.onseeked = res; }), sleep(8000)]);
+      imgs.push({mime:"image/jpeg",data:shrink(v,v.videoWidth,v.videoHeight,768,0.7).split(",")[1]});
+      if(!k) thumb = shrink(v,v.videoWidth,v.videoHeight,160,0.6);
+    }
+    return {thumb, images:imgs};
+  } finally { URL.revokeObjectURL(url); }
+}
+function renderPrev(){
+  const el = $("prev"); el.innerHTML = "";
+  atts.forEach((a,idx)=>{
+    const w = document.createElement("div"); w.className = "th";
+    const im = document.createElement("img"); im.src = a.thumb;
+    const x = document.createElement("button"); x.textContent = "✕"; x.onclick = () => { atts.splice(idx,1); renderPrev(); };
+    w.append(im,x); el.appendChild(w);
+  });
+  el.style.display = atts.length ? "flex" : "none";
+}
+fileEl.onchange = async () => {
+  const files = [...fileEl.files]; fileEl.value = "";
+  if(!files.length) return;
+  const note = add(T.procMedia,"s");
+  for(const f of files){
+    if(atts.length>=6) break;
+    try{
+      if(f.type.startsWith("video/")) atts.push(await processVideo(f));
+      else if(f.type.startsWith("image/")) atts.push(await processImage(f));
+    }catch(e){ add("❌ "+f.name+": "+e.message,"s er"); }
+  }
+  note.remove(); renderPrev();
+};
+
+/* ---------- chat ---------- */
+const hist = withCode => history.slice(-6).map(m=>({role:m.role,content:(withCode&&m.code)?m.content+"\n```lua\n"+m.code+"\n```":m.content}));
+
+async function send(){
+  const typed = $("inp").value.trim(); if(!typed && !atts.length) return;
+  const text = typed || T.mediaDefault;
+  const images = atts.flatMap(a=>a.images);
+  $("inp").value = ""; const ub = add(text,"u");
+  atts.forEach(a=>{ const im = document.createElement("img"); im.src = a.thumb; im.style.cssText = "display:block;max-width:140px;border-radius:8px;margin-top:6px"; ub.appendChild(im); });
+  atts.length = 0; renderPrev();
+  const userMsg = {role:"user",content:text,images};
+
+  // 1-ci mərhələ: istifadəçiyə 45 saniyə ərzində qısa cavab (xəta göstərilmir)
+  const st = add(T.connecting,"s"), stop = tick(st,T.connecting);
+  let reply = "", need = true;
+  try{
+    const raw = await callAI(FAST_SYSTEM(), hist(false).concat([userMsg]), {ms:45000, fast:true, maxTokens:300});
+    const p = parseFast(raw); reply = p.reply; need = p.need;
+  }catch(e){ reply = T.accepted; }
+  stop(); st.remove();
+  const box = add(reply||T.accepted,"a");
+  if(!need){ history.push({role:"user",content:text},{role:"assistant",content:reply,code:""}); $("chat").scrollTop = $("chat").scrollHeight; return; }
+
+  // 2-ci mərhələ: kodu yaz (5 dəqiqəyə qədər)
+  const st2 = add(T.coding,"s"), stop2 = tick(st2,T.coding);
+  try{
+    const raw2 = await callAI(CODE_SYSTEM(), hist(true).concat([userMsg]), {ms:300000, maxTokens:4000});
+    stop2(); st2.remove();
+    const luau = parseCode(raw2);
+    const pre = document.createElement("pre"); pre.textContent = luau; box.appendChild(pre);
+    history.push({role:"user",content:text},{role:"assistant",content:reply,code:luau});
+    askBring(luau);
+  }catch(e){ stop2(); st2.textContent="❌ "+e.message; st2.className="m s er"; }
+  $("chat").scrollTop = $("chat").scrollHeight;
+}
+$("send").onclick = send;
+$("inp").addEventListener("keydown",e=>{ if(e.key==="Enter") send(); });
+
+fillLangs(); loadS(); setLang(cfg().lang||"az");
+</script>
+</body>
+</html>
